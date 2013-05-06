@@ -30,9 +30,11 @@
 #define GPSREADER_H
 
 #include <QThread>
-#include <QtCore/QByteArrayMatcher>
-#include <qt4/QtCore/QByteArray>
+#include <QByteArrayMatcher>
+#include <QByteArray>
+#include <QSettings>
 #include <QMutex>
+#include <QTcpSocket>
 #include "../qextserialport/src/qextserialport.h"
 #include "../qtgpscWidget/satellite.h"
 
@@ -50,12 +52,19 @@ public:
         GPS_STATE_RetrieveChecksum_1,    // Get first checksum character
         GPS_STATE_RetrieveChecksum_2     // Get second checksum character
   };
+  enum GPS_CONNECTION_TYPE
+  {
+    GPS_CONNECTION_TYPE_TCP,
+    GPS_CONNECTION_TYPE_RS_232
+  };
   gpsReader(QObject* parent = 0);
   void run();
 private:
   QextSerialPort * serial;
+  QTcpSocket * socket;
   QByteArray * buffer;
   GPS_STATE structureState;
+  GPS_CONNECTION_TYPE con_type;
   void stateMachine(QByteArray data);
 //  void parseData(QByteArray data);
   uchar calcChecksum;     //Calculated checksum
@@ -67,6 +76,7 @@ private:
   QByteArrayMatcher * isGGA;
   QMutex * stateMachineLock;
   SatList * satellites;
+  QSettings settings;
 private slots:
   void newDataAvailable(void);
   void processNewNMEA(QByteArray talker, QByteArray command, QList<QByteArray> arg);

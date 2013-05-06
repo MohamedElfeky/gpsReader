@@ -33,6 +33,9 @@
 #include <QRegExp>
 #include <iostream>
 #include <QStringList>
+#include <QString>
+#include <QDebug>
+#include <QHostAddress>
 
 gpsReader::gpsReader(QObject* parent): QThread(parent)
 {
@@ -104,23 +107,96 @@ gpsReader::gpsReader(QObject* parent): QThread(parent)
 
 void gpsReader::run()
 {
-  PortSettings settings;
-  settings.BaudRate = BAUD115200;
-  settings.DataBits = DATA_8;
-  settings.FlowControl = FLOW_OFF;
-  settings.Parity = PAR_NONE;
-  settings.StopBits = STOP_1;
-  settings.Timeout_Millisec = 250;
-  buffer = new QByteArray();
-  serial = new QextSerialPort("/dev/RTK-GPS", settings, QextSerialPort::EventDriven);
-  connect(this->serial, SIGNAL(readyRead()), this, SLOT(newDataAvailable()));
-  serial->open(QIODevice::ReadOnly);  
-  QThread::run();
+  QString gpsType;
+  if(settings.contains("GPS/Type"))
+  {
+    gpsType = settings.value("GPS/Type").toString();
+  }
+  else
+  {
+    gpsType = "TCP";
+    settings.setValue("GPS/Type", gpsType);
+  }
+  bool status;
+  if(gpsType.compare("RS-232")==0)
+  {
+    con_type = GPS_CONNECTION_TYPE_RS_232;
+    
+    QString GPSRS232Path;
+    if(settings.contains("GPS/RS-232/Path"))
+    {
+      GPSRS232Path = settings.value("GPS/RS-232/Path").toString();
+    }
+    else
+    {
+      GPSRS232Path = "/dev/RTK-GPS";
+      settings.setValue("GPS/RS-232/Path", GPSRS232Path);
+    }
+    
+    int GPSRS232BAUD;
+    if(settings.contains("GPS/RS-232/BAUDRate"))
+    {
+      GPSRS232BAUD = settings.value("GPS/RS-232/BAUDRate").toInt();
+    }
+    else
+    {
+      GPSRS232BAUD = 115200;
+      settings.setValue("GPS/RS-232/BAUDRate", GPSRS232BAUD);
+    }
+    
+    PortSettings rs232settings;
+    rs232settings.BaudRate = (BaudRateType)GPSRS232BAUD;
+    rs232settings.DataBits = DATA_8;
+    rs232settings.FlowControl = FLOW_OFF;
+    rs232settings.Parity = PAR_NONE;
+    rs232settings.StopBits = STOP_1;
+    rs232settings.Timeout_Millisec = 250;
+    buffer = new QByteArray();
+    serial = new QextSerialPort(GPSRS232Path, rs232settings, QextSerialPort::EventDriven);
+    connect(this->serial, SIGNAL(readyRead()), this, SLOT(newDataAvailable()));
+    status = serial->open(QIODevice::ReadOnly);  
+  }else if(gpsType.compare("TCP")==0)
+  {
+    con_type = GPS_CONNECTION_TYPE_TCP;
+    socket = new QTcpSocket(this);
+    QString GPSTCPAddress;
+    if(settings.contains("GPS/TCP/Address"))
+    {
+      GPSTCPAddress = settings.value("GPS/TCP/Address").toString();
+    }
+    else
+    {
+      GPSTCPAddress = "155.63.159.149";
+      settings.setValue("GPS/TCP/Address", GPSTCPAddress);
+    }
+    QHostAddress gpsAddress(GPSTCPAddress);
+    quint32 GPSTCPPort;
+    if(settings.contains("GPS/TCP/Port"))
+    {
+      GPSTCPPort = settings.value("GPS/TCP/Port").toUInt();
+    }
+    else
+    {
+      GPSTCPPort = 5017;
+      settings.setValue("GPS/TCP/Port", GPSTCPPort);
+    }
+    connect(this->socket, SIGNAL(readyRead()), this, SLOT(newDataAvailable()));
+    socket->connectToHost(gpsAddress, GPSTCPPort, QIODevice::ReadOnly);
+    socket->waitForConnected(300);
+    status = socket->isOpen();
+  }
+  if(status==true)
+    qDebug() << "GPS connected" ;
+  else
+    qDebug() << "no GPS connected" ;
+  exec();
 }
 
 
 void gpsReader::newDataAvailable(void )
 {
+  if(con_type == GPS_CONNECTION_TYPE_RS_232)
+  {
     int avail = serial->bytesAvailable();
     if( avail > 0 ) {
         QByteArray data;
@@ -130,6 +206,18 @@ void gpsReader::newDataAvailable(void )
             stateMachine(data);
         }
     }
+  } else if(con_type == GPS_CONNECTION_TYPE_TCP)
+  {
+    int avail = socket->bytesAvailable();
+    if( avail > 0 ) {
+        QByteArray data;
+        data.resize(avail);
+        int read = socket->read(data.data(), data.size());
+        if( read > 0 ) {
+            stateMachine(data);
+        }
+    }
+  }
 }
 
 
