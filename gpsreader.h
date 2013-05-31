@@ -80,6 +80,10 @@ private:
 private slots:
   void newDataAvailable(void);
   void processNewNMEA(QByteArray talker, QByteArray command, QList<QByteArray> arg);
+  void VTGConverter(QByteArray trackMadeGood, QByteArray trackMadeGoodIndicator,
+	      QByteArray MagneticTrackMadeGood, QByteArray MagneticTrackMadeGoodIndicator,
+	      QByteArray GroundSpeedInKnots, QByteArray GroundSpeedInKnotsUnit,
+	      float GroundSpeedInKmh, QByteArray GroundSpeedInKmhUnit);
   void GGATest(QByteArray time, QByteArray latitude, char latitudeHeading, 
               QByteArray longitude, char longitudeHeading, int GPSQuality, 
               int sattelitesInView, float horizontalDilution, float altitude,
@@ -112,6 +116,7 @@ signals:
 	      QByteArray MagneticTrackMadeGood, QByteArray MagneticTrackMadeGoodIndicator,
 	      QByteArray GroundSpeedInKnots, QByteArray GroundSpeedInKnotsUnit,
 	      float GroundSpeedInKmh, QByteArray GroundSpeedInKmhUnit);
+  void velocity(float vel);
   void satellitesUpdated(SatList sats);
 };
 

@@ -102,11 +102,13 @@ gpsReader::gpsReader(QObject* parent): QThread(parent)
   connect(this, SIGNAL(newGSA(char,char,QList<int>,float,float,float)), SLOT(GSATest(char,char,QList<int>,float,float,float)));
   
   connect(this, SIGNAL(newSubGSV(int,int,int,QList<int>,QList<int>,QList<int>,QList<int>)), SLOT(GSVCollector(int,int,int,QList<int>,QList<int>,QList<int>,QList<int>)));
+  
   this->start();
 }
 
 void gpsReader::run()
 {
+  
   QString gpsType;
   if(settings.contains("GPS/Type"))
   {
@@ -117,6 +119,7 @@ void gpsReader::run()
     gpsType = "TCP";
     settings.setValue("GPS/Type", gpsType);
   }
+  
   bool status;
   if(gpsType.compare("RS-232")==0)
   {
@@ -143,7 +146,6 @@ void gpsReader::run()
       GPSRS232BAUD = 115200;
       settings.setValue("GPS/RS-232/BAUDRate", GPSRS232BAUD);
     }
-    
     PortSettings rs232settings;
     rs232settings.BaudRate = (BaudRateType)GPSRS232BAUD;
     rs232settings.DataBits = DATA_8;
@@ -157,8 +159,11 @@ void gpsReader::run()
     status = serial->open(QIODevice::ReadOnly);  
   }else if(gpsType.compare("TCP")==0)
   {
+    
     con_type = GPS_CONNECTION_TYPE_TCP;
-    socket = new QTcpSocket(this);
+    
+    socket = new QTcpSocket();
+
     QString GPSTCPAddress;
     if(settings.contains("GPS/TCP/Address"))
     {
@@ -185,6 +190,7 @@ void gpsReader::run()
     socket->waitForConnected(300);
     status = socket->isOpen();
   }
+  
   if(status==true)
     qDebug() << "GPS connected" ;
   else
@@ -224,6 +230,7 @@ void gpsReader::newDataAvailable(void )
 
 void gpsReader::processNewNMEA(QByteArray talker, QByteArray command, QList< QByteArray > arg)
 {
+//  return;
   //As all known non-vendor specific commands is 3 bytes, we convert it to and int for cheap comparison
   int icommand;
   if(command.count()!=3) //This is aparently a unknown commands
@@ -251,13 +258,15 @@ void gpsReader::processNewNMEA(QByteArray talker, QByteArray command, QList< QBy
                     )); 
         break;
     case 4410706: //RMC - Recommend Minimum Specific GPS/TRANSIT Data
+break;
+//$GPRMC,111110.01,V,,,,,,,280513,,,N*70
       if(receivers(SIGNAL(newRMC(QByteArray,char,QByteArray,char,QByteArray,char,float,float,QByteArray,float,char))) > 0)
         emit(newRMC(arg[0], //Time
                     arg[1].at(0), //Status
                     arg[2], //Latitude
-                    arg[3].at(0), //Latitude heading
+                    arg[3].count()>0 ? arg[3].at(0) : '?', //Latitude heading
                     arg[4], //Longitude
-                    arg[5].at(0), //Longitude heading
+                    arg[5].count()>0 ? arg[5].at(0) : '?', //Longitude heading
                     arg[6].toFloat(), //Speed over ground
                     arg[7].toFloat(), //Track made good
                     arg[8], //Date
@@ -266,6 +275,7 @@ void gpsReader::processNewNMEA(QByteArray talker, QByteArray command, QList< QBy
         ));
         break;
     case 4281159: //GSA - GPS DOP and active satellites
+break;
         if(receivers(SIGNAL(newGSA(char,char,QList<int>,float,float,float))) > 0)
         {
           QList<int> sats;
@@ -283,6 +293,12 @@ void gpsReader::processNewNMEA(QByteArray talker, QByteArray command, QList< QBy
         }
         break;
     case 5657415: //GSV - Satellites in view
+//$GPVTG,,T,,M,,N,,K,N*2C
+//$GPGSV,3,1,7,15,69,253,*73
+//$GPGSV,3,2,7,33,23,211,,37,26,167,,39,26,162,*77
+//$GLGSV,3,3,7,67,52,245,33,77,65,282,,68,34,322,35*60
+//$GPGGA,112239.40,0000.00000000,N,00000.00000000,E,0,00,0.0,0.000,M,-0.000,M,,*7E
+	break;
         if(
           (receivers(SIGNAL(newSubGSV(int,int,QList<int>,QList<int>,QList<int>,QList<int>)))>1) || (receivers(SIGNAL(satellitesUpdated(SatList)))>0))
         {
@@ -305,6 +321,7 @@ void gpsReader::processNewNMEA(QByteArray talker, QByteArray command, QList< QBy
         }
         break;
     case 4674646: //VTG - Velocity made good
+//break;
       if(receivers(SIGNAL(newVTG(QByteArray, QByteArray,
 	      QByteArray, QByteArray,
 	      QByteArray, QByteArray,
@@ -334,6 +351,17 @@ void gpsReader::GGATest(QByteArray time, QByteArray latitude, char latitudeHeadi
 // std::cout << std::endl << "Received GGA at " << time.constData() << " GPS Quality is " << GPSQuality;
 // std::cout << " Dilution is " << horizontalDilution << " and we have " << sattelitesInView << " Sats in view";
 }
+
+void gpsReader::VTGConverter(QByteArray trackMadeGood, QByteArray trackMadeGoodIndicator, 
+			     QByteArray MagneticTrackMadeGood, QByteArray MagneticTrackMadeGoodIndicator, 
+			     QByteArray GroundSpeedInKnots, QByteArray GroundSpeedInKnotsUnit, 
+			     float GroundSpeedInKmh, QByteArray GroundSpeedInKmhUnit)
+{
+
+  float metersPrSecond = GroundSpeedInKmh / 3.6f;
+  emit(velocity(metersPrSecond));
+}
+
 
 void gpsReader::RMCTest(QByteArray time, char status, QByteArray latitude, char latitudeHeading, 
                         QByteArray longitude, char longitudeHeading, float speedOverGround, 
