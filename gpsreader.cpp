@@ -89,6 +89,9 @@ gpsReader::gpsReader(QObject* parent): QThread(parent)
     satellites->insert(i, blank);
   }
   
+  log = new LoggerModule("../Logging", "GPSReader");
+  connect(this, SIGNAL(newNMEASentence(QByteArray,QByteArray,QList<QByteArray>)), this, SLOT(NMEALogFormatter(QByteArray,QByteArray,QList<QByteArray>)));
+  
   connect(this, SIGNAL(newNMEASentence(QByteArray,QByteArray,QList<QByteArray>)), this, SLOT(processNewNMEA(QByteArray,QByteArray,QList<QByteArray>)));
   
   connect(this, SIGNAL(newGGA(QByteArray,QByteArray,char,QByteArray,char,int,int,float,float,char,QByteArray,char,float,int)),
@@ -407,6 +410,19 @@ void gpsReader::GSVCollector(int numMessages, int messageNum, int satsInView, QL
     }
   }
   emit(satellitesUpdated(*satellites));
+}
+
+void gpsReader::NMEALogFormatter(QByteArray talker, QByteArray command, QList< QByteArray > arg)
+{
+  QString string;
+  string.append(talker);
+  string.append(command);
+  for(QList<QByteArray>::iterator it= arg.begin();it != arg.end(); it++)
+  {
+    string.append(",");
+    string.append(*it);
+  }
+  this->log->log("NMEA:", string.toLocal8Bit().constData());
 }
 
 

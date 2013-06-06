@@ -37,6 +37,7 @@
 #include <QTcpSocket>
 #include "../qextserialport/src/qextserialport.h"
 #include "../qtgpscWidget/satellite.h"
+#include "../LoggerModule/loggermodule.h"
 
 class gpsReader : public QThread
 {
@@ -77,6 +78,7 @@ private:
   QMutex * stateMachineLock;
   SatList * satellites;
   QSettings settings;
+  LoggerModule * log;
 private slots:
   void newDataAvailable(void);
   void processNewNMEA(QByteArray talker, QByteArray command, QList<QByteArray> arg);
@@ -95,6 +97,7 @@ private slots:
               char magneticVariationUnit);
   void GSATest(char selMode, char mode, QList<int> satellites, float pDOP, float hDOP, float vDOP);
   void GSVCollector(int numMessages, int messageNum, int satsInView, QList<int> prn, QList<int> elevation, QList<int> azimuthh, QList<int> snr);
+  void NMEALogFormatter(QByteArray talker, QByteArray command, QList<QByteArray> arg);
 //   void VTG(QByteArray trackMadeGood, QByteArray trackMadeGoodIndicator,
 // 	      QByteArray MagneticTrackMadeGood, QByteArray MagneticTrackMadeGoodIndicator,
 // 	      QByteArray GroundSpeedInKnots, QByteArray GroundSpeedInKnotsUnit,
