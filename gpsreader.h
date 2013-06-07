@@ -37,7 +37,9 @@
 #include <QTcpSocket>
 #include "../qextserialport/src/qextserialport.h"
 #include "../qtgpscWidget/satellite.h"
+#ifdef USE_DATALOGGER
 #include "../LoggerModule/loggermodule.h"
+#endif
 
 class gpsReader : public QThread
 {
@@ -78,7 +80,9 @@ private:
   QMutex * stateMachineLock;
   SatList * satellites;
   QSettings settings;
+  #ifdef USE_DATALOGGER
   LoggerModule * log;
+  #endif
 private slots:
   void newDataAvailable(void);
   void processNewNMEA(QByteArray talker, QByteArray command, QList<QByteArray> arg);

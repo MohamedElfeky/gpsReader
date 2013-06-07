@@ -88,8 +88,9 @@ gpsReader::gpsReader(QObject* parent): QThread(parent)
   {
     satellites->insert(i, blank);
   }
-  
+#ifdef USE_DATALOGGER
   log = new LoggerModule("../Logging", "GPSReader");
+#endif
   connect(this, SIGNAL(newNMEASentence(QByteArray,QByteArray,QList<QByteArray>)), this, SLOT(NMEALogFormatter(QByteArray,QByteArray,QList<QByteArray>)));
   
   connect(this, SIGNAL(newNMEASentence(QByteArray,QByteArray,QList<QByteArray>)), this, SLOT(processNewNMEA(QByteArray,QByteArray,QList<QByteArray>)));
@@ -101,6 +102,9 @@ gpsReader::gpsReader(QObject* parent): QThread(parent)
   connect(this, SIGNAL(newRMC(QByteArray,char,QByteArray,char,QByteArray,char,float,float,QByteArray,float,char)),
           this, SLOT(RMCTest(QByteArray,char,QByteArray,char,QByteArray,char,float,float,QByteArray,float,char))
          );
+  
+  connect(this, SIGNAL(newVTG(QByteArray,QByteArray,QByteArray,QByteArray,QByteArray,QByteArray,float,QByteArray)),
+	  this, SLOT(VTGConverter(QByteArray,QByteArray,QByteArray,QByteArray,QByteArray,QByteArray,float,QByteArray)));
   
   connect(this, SIGNAL(newGSA(char,char,QList<int>,float,float,float)), SLOT(GSATest(char,char,QList<int>,float,float,float)));
   
@@ -414,6 +418,7 @@ void gpsReader::GSVCollector(int numMessages, int messageNum, int satsInView, QL
 
 void gpsReader::NMEALogFormatter(QByteArray talker, QByteArray command, QList< QByteArray > arg)
 {
+  #ifdef USE_DATALOGGER
   QString string;
   string.append(talker);
   string.append(command);
@@ -423,6 +428,7 @@ void gpsReader::NMEALogFormatter(QByteArray talker, QByteArray command, QList< Q
     string.append(*it);
   }
   this->log->log("NMEA:", string.toLocal8Bit().constData());
+#endif
 }
 
 
