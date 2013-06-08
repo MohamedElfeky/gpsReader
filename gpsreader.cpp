@@ -35,6 +35,7 @@
 #include <QStringList>
 #include <QString>
 #include <QDebug>
+#include <QDateTime>
 #include <QHostAddress>
 
 gpsReader::gpsReader(QObject* parent): QThread(parent)
@@ -128,6 +129,8 @@ void gpsReader::run()
   }
   
   bool status;
+  QHostAddress gpsAddress;
+  quint32 GPSTCPPort;
   if(gpsType.compare("RS-232")==0)
   {
     con_type = GPS_CONNECTION_TYPE_RS_232;
@@ -181,8 +184,8 @@ void gpsReader::run()
       GPSTCPAddress = "155.63.159.149";
       settings.setValue("GPS/TCP/Address", GPSTCPAddress);
     }
-    QHostAddress gpsAddress(GPSTCPAddress);
-    quint32 GPSTCPPort;
+    gpsAddress = GPSTCPAddress;
+    ;
     if(settings.contains("GPS/TCP/Port"))
     {
       GPSTCPPort = settings.value("GPS/TCP/Port").toUInt();
@@ -202,6 +205,21 @@ void gpsReader::run()
     qDebug() << "GPS connected" ;
   else
     qDebug() << "no GPS connected" ;
+  lastDataReceived = QDateTime::currentMSecsSinceEpoch();
+  const qint64 maxDataDelay = 500;
+  while(true)
+  {
+    qint64 currTime = QDateTime::currentMSecsSinceEpoch();
+    if((lastDataReceived+maxDataDelay) < currTime)
+    {
+      socket->disconnectFromHost();
+      socket->connectToHost(gpsAddress, GPSTCPPort, QIODevice::ReadOnly);
+      socket->waitForConnected(300);
+      status = socket->isOpen();
+      lastDataReceived = QDateTime::currentMSecsSinceEpoch();
+    }
+    this->msleep(100);
+  }
   exec();
 }
 
@@ -221,6 +239,7 @@ void gpsReader::newDataAvailable(void )
     }
   } else if(con_type == GPS_CONNECTION_TYPE_TCP)
   {
+    lastDataReceived = QDateTime::currentMSecsSinceEpoch();
     int avail = socket->bytesAvailable();
     if( avail > 0 ) {
         QByteArray data;

@@ -80,8 +80,9 @@ private:
   QMutex * stateMachineLock;
   SatList * satellites;
   QSettings settings;
+  qint64 lastDataReceived;
   #ifdef USE_DATALOGGER
-  LoggerModule * log;
+    LoggerModule * log;
   #endif
 private slots:
   void newDataAvailable(void);
