@@ -197,6 +197,7 @@ void gpsReader::run()
     }
     connect(this->socket, SIGNAL(readyRead()), this, SLOT(newDataAvailable()));
     socket->connectToHost(gpsAddress, GPSTCPPort, QIODevice::ReadOnly);
+    std::cout << "Connecting to " << gpsAddress.toString().toLocal8Bit().constData() << ":" << GPSTCPPort << std::endl;
     socket->waitForConnected(300);
     status = socket->isOpen();
   }
@@ -207,19 +208,19 @@ void gpsReader::run()
     qDebug() << "no GPS connected" ;
   lastDataReceived = QDateTime::currentMSecsSinceEpoch();
   const qint64 maxDataDelay = 500;
-  while(true)
-  {
-    qint64 currTime = QDateTime::currentMSecsSinceEpoch();
-    if((lastDataReceived+maxDataDelay) < currTime)
-    {
-      socket->disconnectFromHost();
-      socket->connectToHost(gpsAddress, GPSTCPPort, QIODevice::ReadOnly);
-      socket->waitForConnected(300);
-      status = socket->isOpen();
-      lastDataReceived = QDateTime::currentMSecsSinceEpoch();
-    }
-    this->msleep(100);
-  }
+//   while(true)
+//   {
+//     qint64 currTime = QDateTime::currentMSecsSinceEpoch();
+//     if((lastDataReceived+maxDataDelay) < currTime)
+//     {
+//       socket->disconnectFromHost();
+//       socket->connectToHost(gpsAddress, GPSTCPPort, QIODevice::ReadOnly);
+//       socket->waitForConnected(300);
+//       status = socket->isOpen();
+//       lastDataReceived = QDateTime::currentMSecsSinceEpoch();
+//     }
+//     this->msleep(100);
+//   }
   exec();
 }
 
