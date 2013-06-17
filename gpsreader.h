@@ -35,6 +35,7 @@
 #include <QSettings>
 #include <QMutex>
 #include <QTcpSocket>
+#include <QHostAddress>
 #include "../qextserialport/src/qextserialport.h"
 #include "../qtgpscWidget/satellite.h"
 #ifdef USE_DATALOGGER
@@ -81,6 +82,9 @@ private:
   SatList * satellites;
   QSettings settings;
   qint64 lastDataReceived;
+  QString GPSTCPAddress;
+  QHostAddress gpsAddress;
+  quint32 GPSTCPPort;
   #ifdef USE_DATALOGGER
     LoggerModule * log;
   #endif
@@ -103,6 +107,7 @@ private slots:
   void GSATest(char selMode, char mode, QList<int> satellites, float pDOP, float hDOP, float vDOP);
   void GSVCollector(int numMessages, int messageNum, int satsInView, QList<int> prn, QList<int> elevation, QList<int> azimuthh, QList<int> snr);
   void NMEALogFormatter(QByteArray talker, QByteArray command, QList<QByteArray> arg);
+  void gpsWatchdog(void);
 //   void VTG(QByteArray trackMadeGood, QByteArray trackMadeGoodIndicator,
 // 	      QByteArray MagneticTrackMadeGood, QByteArray MagneticTrackMadeGoodIndicator,
 // 	      QByteArray GroundSpeedInKnots, QByteArray GroundSpeedInKnotsUnit,
